@@ -17,7 +17,7 @@ ITERATIONS = 100000
 
 # File to store user credentials
 CREDENTIALS_FILE = "credentials.txt"
-REGISTER_PATH = "registers/"
+REGISTER_PATH = "data/"
 
 def checkIfTheEmailAlreadyExist(email):
     with open(CREDENTIALS_FILE, "r") as file:
