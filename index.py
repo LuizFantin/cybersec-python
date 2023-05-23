@@ -13,8 +13,6 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 
 
-
-
 # Encryption constants
 # Encryption constants
 KEY_SIZE = 16  # AES-128
@@ -27,25 +25,29 @@ CIPHER_MODES = {
 }
 
 
-
 # File to store user credentials
 CREDENTIALS_FILE = "credentials.txt"
 REGISTER_PATH = "data/"
 
+
 def checkIfTheEmailAlreadyExist(email):
-    with open(CREDENTIALS_FILE, "r") as file:
-        for line in file:
-            stored_email = line.strip().split(":")[0]
-            if stored_email == email:
-                return True
-    return False
+    try:
+        with open(CREDENTIALS_FILE, "r") as file:
+            for line in file:
+                stored_email = line.strip().split(":")[0]
+                if stored_email == email:
+                    return True
+            return False
+    except FileNotFoundError:
+        open(CREDENTIALS_FILE, "x")
+        return False
+
 
 def generate_mac(key, message, algorithm):
     hmac_msg = message.encode()  # Convert message to bytes if it's a string
 
     mac = hmac.new(key, hmac_msg, algorithm)
     return mac.hexdigest()
-
 
 
 def register():
@@ -85,7 +87,6 @@ def register():
     print("Registration successful!")
 
 
-
 def login():
     email = input("Enter your email: ")
     password = getpass.getpass("Enter your password: ")
@@ -119,20 +120,20 @@ def login():
         return None
 
 
-
-
 def loggedFlow(key, iv, salt, user_id, cipher_mode):  # Añade cipher_mode como argumento
-    while True: 
+    while True:
         print("1. Insert a new register")
         print("2. List registers")
         print("3. Exit")
         choice = input("Enter your choice: ")
 
         if choice == "1":
-            insertNewRegister(key, iv, salt, user_id, cipher_mode)  # Pasa cipher_mode
+            insertNewRegister(key, iv, salt, user_id,
+                              cipher_mode)  # Pasa cipher_mode
 
         elif choice == "2":
-            listRegisters(key, iv, salt, user_id, cipher_mode)  # Pasa cipher_mode aquí también
+            # Pasa cipher_mode aquí también
+            listRegisters(key, iv, salt, user_id, cipher_mode)
 
         elif choice == "3":
             exit(0)
@@ -147,27 +148,25 @@ def listRegisters(key, iv, salt, user_id, cipher_mode):
             for line in file:
                 stored_timestamp, stored_ciphertext, stored_user_id, stored_hmac = line.strip().split(":")
                 if cipher_mode == 'CBC':
-                    cipher = AES.new(key, AES.MODE_CBC, iv) 
-                    original_description = unpad(cipher.decrypt(b64decode(stored_ciphertext)), AES.block_size).decode()
+                    cipher = AES.new(key, AES.MODE_CBC, iv)
+                    original_description = unpad(cipher.decrypt(
+                        b64decode(stored_ciphertext)), AES.block_size).decode()
                 else:  # cipher_mode == 'CTR'
                     cipher = AES.new(key, AES.MODE_CTR, nonce=iv)
-                    original_description = cipher.decrypt(b64decode(stored_ciphertext)).decode()
+                    original_description = cipher.decrypt(
+                        b64decode(stored_ciphertext)).decode()
                 now = datetime.fromtimestamp(float(stored_timestamp))
 
                 print(original_description)
                 print(f"Date: {now}")
-                print("Validity: " + "Válido" if hmac.compare_digest(stored_hmac, generate_mac(key, original_description, hashlib.sha256)) else "Não válido")
-                print("\n")   
+                print("Validity: " + "Válido" if hmac.compare_digest(stored_hmac,
+                      generate_mac(key, original_description, hashlib.sha256)) else "Não válido")
+                print("\n")
     except FileNotFoundError:
-        print("No registers found") 
+        print("No registers found")
     except ValueError:
         print("Error during the decryption")
     return
-
-
-
-
-
 
 
 def insertNewRegister(key, iv, salt, user_id, cipher_mode):
@@ -178,18 +177,18 @@ def insertNewRegister(key, iv, salt, user_id, cipher_mode):
     if cipher_mode == 'CBC':
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
         ciphertext = cipher.encrypt(pad(description.encode(), AES.block_size))
-    else:# cipher_mode == 'CTR'
+    else:  # cipher_mode == 'CTR'
         cipher = AES.new(key, AES.MODE_CTR, nonce=iv)
         ciphertext = cipher.encrypt(description.encode())
 
-    new_hmac = generate_mac(key, description, hashlib.sha256) 
+    new_hmac = generate_mac(key, description, hashlib.sha256)
 
     with open(REGISTER_PATH+user_id+".txt", "a") as file:
-        file.write(f"{now_timestamp}:{b64encode(ciphertext).decode()}:{user_id}:{new_hmac}\n")
+        file.write(
+            f"{now_timestamp}:{b64encode(ciphertext).decode()}:{user_id}:{new_hmac}\n")
 
     print("Insertion successful!")
 
-    
 
 def main():
     while True:
@@ -204,7 +203,8 @@ def main():
             login_result = login()  # <-- Aquí está la corrección
             if login_result is not None:  # Si login fue exitoso
                 success, key, iv, salt, user_id, cipher_mode = login_result
-                loggedFlow(key, iv, salt, user_id, cipher_mode)  # <-- Aquí está la corrección
+                # <-- Aquí está la corrección
+                loggedFlow(key, iv, salt, user_id, cipher_mode)
         elif choice == "3":
             exit(0)
         else:
